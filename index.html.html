@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky & Paws - 天氣與狗狗生活伴侶</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: {
+                            DEFAULT: 'rgba(255, 255, 255, 0.08)',
+                            card: 'rgba(255, 255, 255, 0.05)',
+                            border: 'rgba(255, 255, 255, 0.12)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url('https://pic.616pic.com/bg_w1180/00/04/00/JaigECb7PG.jpg') center/cover no-repeat fixed;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 37%, rgba(255, 255, 255, 0.05) 63%);
+            background-size: 200% 100%;
+            animation: shimmer 1.8s infinite;
+        }
+
+        select option {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="text-slate-100 flex flex-col min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div class="flex-grow container mx-auto px-4 py-8 max-w-5xl flex flex-col items-center justify-center">
+        <!-- Header Section -->
+        <header class="w-full text-center mb-8">
+            <div class="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 mb-4 shadow-lg">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+                <span class="text-xs font-semibold tracking-wider uppercase text-slate-200">Weather & Canine Companion</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-200 via-indigo-200 to-pink-200">
+                Sky & Paws
+            </h1>
+            <p class="text-sm text-slate-400 mt-2">即時當地天氣氣象資訊 × 療癒毛孩狗狗相片</p>
+        </header>
+
+        <!-- Notification Toast Banner -->
+        <div id="toastBox" class="hidden w-full max-w-4xl mb-6 p-4 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-200 flex items-center justify-between text-sm shadow-xl backdrop-blur-md transition-all duration-300">
+            <div class="flex items-center gap-3">
+                <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0 text-amber-300"></i>
+                <span id="toastMsg">提示訊息...</span>
+            </div>
+            <button onclick="hideToast()" class="text-amber-200/60 hover:text-amber-100 p-1 rounded-lg transition-colors">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <!-- Location Controls & Action Bar -->
+        <div class="w-full max-w-4xl glass-panel rounded-2xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <button id="geoBtn" onclick="requestGeolocation()" title="定位當前位置" 
+                    class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-indigo-900/40 active:scale-95 text-sm w-full md:w-auto">
+                    <i data-lucide="crosshair" class="w-4 h-4"></i>
+                    <span>定位我的位置</span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative w-full md:w-64">
+                    <i data-lucide="map-pin" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    <select id="citySelect" onchange="handleCityChange(event)" 
+                        class="w-full bg-slate-900/60 border border-white/10 rounded-xl pl-10 pr-9 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer">
+                        <option value="auto">📍 當前自動定位 (Auto)</option>
+                        <option value="25.0330,121.5654,台北 (Taipei)">台北 (Taipei)</option>
+                        <option value="24.1477,120.6736,台中 (Taichung)">台中 (Taichung)</option>
+                        <option value="22.6273,120.3014,高雄 (Kaohsiung)">高雄 (Kaohsiung)</option>
+                        <option value="35.6762,139.6503,東京 (Tokyo)">東京 (Tokyo)</option>
+                        <option value="40.7128,-74.0060,紐約 (New York)">紐約 (New York)</option>
+                        <option value="51.5074,-0.1278,倫敦 (London)">倫敦 (London)</option>
+                        <option value="48.8566,2.3522,巴黎 (Paris)">巴黎 (Paris)</option>
+                        <option value="-33.8688,151.2093,雪梨 (Sydney)">雪梨 (Sydney)</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                </div>
+                
+                <button onclick="fetchAllData()" title="重新整理全部資料" 
+                    class="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl border border-white/10 transition-colors active:scale-95 text-slate-200 flex-shrink-0">
+                    <i data-lucide="refresh-cw" class="w-4 h-4" id="globalRefreshIcon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Cards Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-4xl">
+            
+            <!-- Weather Card -->
+            <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden group">
+                <div class="absolute -top-16 -left-16 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div>
+                    <!-- Weather Card Header -->
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="cityName" class="text-2xl md:text-3xl font-bold text-white tracking-tight">--</h2>
+                            </div>
+                            <p id="weatherDate" class="text-xs text-slate-400 mt-1">載入日期中...</p>
+                        </div>
+                        <div id="weatherIconContainer" class="p-3 bg-white/10 rounded-2xl border border-white/10 flex items-center justify-center shadow-inner">
+                            <i data-lucide="cloud" class="w-8 h-8 text-blue-300"></i>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Display -->
+                    <div class="my-6">
+                        <div class="flex items-baseline">
+                            <span id="tempValue" class="text-6xl md:text-7xl font-black tracking-tight text-white">--</span>
+                            <span class="text-3xl font-light text-blue-300 ml-1.5">°C</span>
+                        </div>
+                        <p id="weatherCondition" class="text-slate-300 font-medium text-lg mt-2 flex items-center gap-2">
+                            <span>獲取天氣數據中...</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Weather Details Sub-Grid -->
+                <div class="grid grid-cols-3 gap-3 pt-6 border-t border-white/10">
+                    <div class="glass-card rounded-2xl p-3 flex flex-col justify-between">
+                        <div class="flex items-center gap-1.5 text-indigo-300 mb-1">
+                            <i data-lucide="thermometer" class="w-4 h-4"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">體感溫度</span>
+                        </div>
+                        <p id="feelsLike" class="text-base font-bold text-slate-100">-- °C</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-3 flex flex-col justify-between">
+                        <div class="flex items-center gap-1.5 text-sky-300 mb-1">
+                            <i data-lucide="droplets" class="w-4 h-4"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">相對濕度</span>
+                        </div>
+                        <p id="humidityValue" class="text-base font-bold text-slate-100">-- %</p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-3 flex flex-col justify-between">
+                        <div class="flex items-center gap-1.5 text-emerald-300 mb-1">
+                            <i data-lucide="wind" class="w-4 h-4"></i>
+                            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">當前風速</span>
+                        </div>
+                        <p id="windSpeed" class="text-base font-bold text-slate-100">-- km/h</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dog Photo Card -->
+            <div class="glass-panel rounded-3xl p-6 md:p-8 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -bottom-16 -right-16 w-48 h-48 bg-pink-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div>
+                    <!-- Dog Card Header -->
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-2 bg-pink-500/20 rounded-xl text-pink-300 border border-pink-500/30">
+                                <i data-lucide="dog" class="w-5 h-5"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-white">狗狗心情寫真</h2>
+                        </div>
+                        
+                        <button onclick="fetchDogPhotoOnly()" id="refreshDogBtn" 
+                            class="flex items-center gap-2 text-xs bg-pink-500/20 hover:bg-pink-500/30 text-pink-200 px-3.5 py-2 rounded-xl border border-pink-500/30 transition-all active:scale-95 font-medium shadow-md">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-pink-300"></i>
+                            <span>換一張狗狗</span>
+                        </button>
+                    </div>
+
+                    <!-- Photo Canvas Container -->
+                    <div class="relative w-full h-64 md:h-72 rounded-2xl overflow-hidden glass-card flex items-center justify-center group shadow-inner">
+                        <!-- Skeleton Loader Placeholder -->
+                        <div id="dogSkeleton" class="absolute inset-0 skeleton flex items-center justify-center z-10">
+                            <div class="flex flex-col items-center gap-2 text-slate-400">
+                                <i data-lucide="image" class="w-8 h-8 opacity-40"></i>
+                                <span class="text-xs">尋找可愛狗狗中...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Floating Like Heart Button -->
+                        <button id="likeDogBtn" onclick="toggleLikeCurrentDog()" title="加入收藏"
+                            class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/60 backdrop-blur-md border border-white/20 text-slate-300 hover:text-pink-400 hover:scale-110 active:scale-95 transition-all shadow-lg z-20">
+                            <i data-lucide="heart" id="likeIcon" class="w-5 h-5"></i>
+                        </button>
+
+                        <!-- Dog Image -->
+                        <img id="dogImage" src="" alt="Random Dog" 
+                            class="w-full h-full object-cover opacity-0 transition-opacity duration-500"
+                            onload="onDogImageLoaded()" 
+                            onerror="onDogImageError()">
+
+                        <!-- Breed Badge Tag -->
+                        <div id="dogBreedBadge" class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 text-xs font-semibold text-slate-200 opacity-0 transition-opacity duration-300 shadow-lg flex items-center gap-1.5 z-10">
+                            <i data-lucide="paw-print" class="w-3.5 h-3.5 text-pink-400"></i>
+                            <span id="dogBreedText">品種載入中</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-between text-xs text-slate-400">
+                    <span class="flex items-center gap-1">
+                        <i data-lucide="heart" class="w-3.5 h-3.5 text-pink-400 fill-pink-400/30"></i>
+                        Dog CEO API 提供
+                    </span>
+                    <span class="italic text-slate-500">點擊按鈕刷新每日汪星人</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Favorites Gallery Section -->
+        <div class="w-full max-w-4xl glass-panel rounded-3xl p-6 md:p-8 mt-6">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-2 bg-pink-500/20 rounded-xl text-pink-300 border border-pink-500/30">
+                        <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-white">我的收藏狗狗照片</h2>
+                    <span id="favCountBadge" class="bg-pink-500/20 border border-pink-500/30 text-pink-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">0</span>
+                </div>
+                <button onclick="clearAllFavorites()" id="clearFavsBtn" class="hidden text-xs text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>清除全部</span>
+                </button>
+            </div>
+
+            <!-- Gallery Grid -->
+            <div id="favoritesGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <div id="emptyFavsState" class="text-center py-8 text-slate-400">
+                <i data-lucide="heart-off" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
+                <p class="text-sm">尚未收藏任何狗狗照片，快按愛心收藏吧！</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-4 text-center text-xs text-slate-500 border-t border-white/5">
+        <p>Built with Vanilla JavaScript • Open-Meteo & Dog CEO APIs</p>
+    </footer>
+
+    <script>
+        // Application State Configuration
+        let currentCoords = { lat: 25.0330, lon: 121.5654, name: "台北 (Taipei)" };
+        let isGeoLocationActive = false;
+        let currentDog = { url: "", breed: "" };
+        let favorites = [];
+
+        // Open-Meteo WMO Weather Interpretations
+        const WMO_WEATHER_MAP = {
+            0: { desc: "晴朗無雲 (Clear Sky)", icon: "sun", color: "text-amber-400" },
+            1: { desc: "晴時多雲 (Mainly Clear)", icon: "sun-medium", color: "text-amber-300" },
+            2: { desc: "多雲 (Partly Cloudy)", icon: "cloud-sun", color: "text-slate-300" },
+            3: { desc: "陰天 (Overcast)", icon: "cloud", color: "text-slate-400" },
+            45: { desc: "起霧 (Foggy)", icon: "cloud-fog", color: "text-slate-400" },
+            48: { desc: "霧霾 (Depositing Fog)", icon: "cloud-fog", color: "text-slate-400" },
+            51: { desc: "小陣雨 (Light Drizzle)", icon: "cloud-drizzle", color: "text-sky-300" },
+            53: { desc: "毛毛雨 (Moderate Drizzle)", icon: "cloud-drizzle", color: "text-sky-400" },
+            55: { desc: "密集毛毛雨 (Dense Drizzle)", icon: "cloud-rain", color: "text-blue-400" },
+            61: { desc: "小雨 (Slight Rain)", icon: "cloud-rain", color: "text-blue-400" },
+            63: { desc: "中雨 (Moderate Rain)", icon: "cloud-rain", color: "text-blue-500" },
+            65: { desc: "大雨 (Heavy Rain)", icon: "cloud-heavy-rain", color: "text-blue-600" },
+            71: { desc: "小雪 (Slight Snow)", icon: "snowflake", color: "text-indigo-200" },
+            73: { desc: "中雪 (Moderate Snow)", icon: "snowflake", color: "text-indigo-300" },
+            75: { desc: "大雪 (Heavy Snow)", icon: "snowflake", color: "text-indigo-400" },
+            80: { desc: "陣雨 (Rain Showers)", icon: "cloud-rain", color: "text-blue-400" },
+            81: { desc: "強陣雨 (Heavy Showers)", icon: "cloud-rain", color: "text-blue-500" },
+            82: { desc: "暴雨 (Violent Showers)", icon: "cloud-lightning", color: "text-purple-400" },
+            95: { desc: "雷陣雨 (Thunderstorm)", icon: "cloud-lightning", color: "text-amber-300" },
+            96: { desc: "雷雨伴隨冰雹 (Thunderstorm & Hail)", icon: "cloud-hail", color: "text-amber-400" },
+        };
+
+        // Initialize application on DOM load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFavorites();
+            lucide.createIcons();
+            updateFormattedDate();
+            requestGeolocation();
+        });
+
+        // LocalStorage Favorites Logic
+        function loadFavorites() {
+            try {
+                const stored = localStorage.getItem('sky_paws_favs');
+                favorites = stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                favorites = [];
+            }
+            renderFavorites();
+        }
+
+        function saveFavorites() {
+            localStorage.setItem('sky_paws_favs', JSON.stringify(favorites));
+            renderFavorites();
+            updateLikeButtonState();
+        }
+
+        function toggleLikeCurrentDog() {
+            if (!currentDog.url) return;
+
+            const existingIndex = favorites.findIndex(item => item.url === currentDog.url);
+            if (existingIndex >= 0) {
+                favorites.splice(existingIndex, 1);
+                showToast("已從收藏集中移除相片。");
+            } else {
+                favorites.unshift({
+                    id: Date.now(),
+                    url: currentDog.url,
+                    breed: currentDog.breed || "Cute Dog",
+                    savedAt: new Date().toLocaleDateString('zh-TW')
+                });
+                showToast("❤️ 已將狗狗相片加入收藏！");
+            }
+            saveFavorites();
+        }
+
+        function removeFavorite(id) {
+            favorites = favorites.filter(item => item.id !== id);
+            saveFavorites();
+            showToast("已移除收藏照片。");
+        }
+
+        function clearAllFavorites() {
+            if (favorites.length === 0) return;
+            favorites = [];
+            saveFavorites();
+            showToast("已清空所有收藏照片。");
+        }
+
+        function updateLikeButtonState() {
+            const likeBtn = document.getElementById('likeDogBtn');
+            const isLiked = currentDog.url && favorites.some(item => item.url === currentDog.url);
+
+            if (isLiked) {
+                likeBtn.classList.add('text-pink-500', 'bg-pink-500/20', 'border-pink-500/40');
+                likeBtn.classList.remove('text-slate-300', 'bg-slate-900/60');
+                likeBtn.innerHTML = `<i data-lucide="heart" class="w-5 h-5 fill-pink-500 text-pink-500"></i>`;
+            } else {
+                likeBtn.classList.remove('text-pink-500', 'bg-pink-500/20', 'border-pink-500/40');
+                likeBtn.classList.add('text-slate-300', 'bg-slate-900/60');
+                likeBtn.innerHTML = `<i data-lucide="heart" class="w-5 h-5"></i>`;
+            }
+            lucide.createIcons();
+        }
+
+        function renderFavorites() {
+            const grid = document.getElementById('favoritesGrid');
+            const emptyState = document.getElementById('emptyFavsState');
+            const clearBtn = document.getElementById('clearFavsBtn');
+            const badge = document.getElementById('favCountBadge');
+
+            badge.innerText = favorites.length;
+
+            if (favorites.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            clearBtn.classList.remove('hidden');
+
+            grid.innerHTML = favorites.map(item => `
+                <div class="glass-card rounded-2xl overflow-hidden group relative flex flex-col justify-between border border-white/10 hover:border-pink-500/40 transition-all">
+                    <div class="relative w-full h-36 overflow-hidden bg-slate-900">
+                        <img src="${item.url}" alt="${item.breed}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                        <button onclick="removeFavorite(${item.id})" title="刪除收藏" 
+                            class="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/70 text-slate-300 hover:text-rose-400 hover:bg-slate-900 transition-colors">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <div class="p-2.5 flex flex-col justify-between">
+                        <p class="text-xs font-semibold text-slate-200 truncate">${item.breed}</p>
+                        <span class="text-[10px] text-slate-400 mt-0.5">${item.savedAt}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function updateFormattedDate() {
+            const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('weatherDate').innerText = new Date().toLocaleDateString('zh-TW', options);
+        }
+
+        function showToast(msg) {
+            const toastBox = document.getElementById('toastBox');
+            document.getElementById('toastMsg').innerText = msg;
+            toastBox.classList.remove('hidden');
+        }
+
+        function hideToast() {
+            document.getElementById('toastBox').classList.add('hidden');
+        }
+
+        function requestGeolocation() {
+            hideToast();
+            if ("geolocation" in navigator) {
+                const geoBtn = document.getElementById('geoBtn');
+                geoBtn.disabled = true;
+                geoBtn.classList.add('opacity-75');
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        geoBtn.disabled = false;
+                        geoBtn.classList.remove('opacity-75');
+                        
+                        currentCoords = {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude,
+                            name: "您的位置 (Local Area)"
+                        };
+                        isGeoLocationActive = true;
+                        document.getElementById('citySelect').value = "auto";
+                        
+                        fetchAllData();
+                    },
+                    (error) => {
+                        geoBtn.disabled = false;
+                        geoBtn.classList.remove('opacity-75');
+                        
+                        let message = "未獲取定位權限，已切換至預設城市 (台北)。";
+                        if (error.code === error.PERMISSION_DENIED) {
+                            message = "已拒絕位置授權，自動為您顯示預設城市 (台北)。";
+                        }
+                        showToast(message);
+                        applyFallbackCity();
+                    },
+                    { timeout: 8000 }
+                );
+            } else {
+                showToast("瀏覽器不支援地理定位，已切換至預設城市 (台北)。");
+                applyFallbackCity();
+            }
+        }
+
+        function handleCityChange(event) {
+            hideToast();
+            const value = event.target.value;
+            if (value === "auto") {
+                requestGeolocation();
+            } else {
+                const [lat, lon, name] = value.split(',');
+                currentCoords = { lat: parseFloat(lat), lon: parseFloat(lon), name: name };
+                isGeoLocationActive = false;
+                fetchAllData();
+            }
+        }
+
+        function applyFallbackCity() {
+            document.getElementById('citySelect').value = "25.0330,121.5654,台北 (Taipei)";
+            currentCoords = { lat: 25.0330, lon: 121.5654, name: "台北 (Taipei)" };
+            isGeoLocationActive = false;
+            fetchAllData();
+        }
+
+        async function fetchAllData() {
+            setWeatherUIState(true);
+            triggerDogSkeleton();
+
+            const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${currentCoords.lat}&longitude=${currentCoords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m`;
+            const dogUrl = `https://dog.ceo/api/breeds/image/random`;
+
+            const refreshIcon = document.getElementById('globalRefreshIcon');
+            refreshIcon.classList.add('animate-spin');
+
+            // Concurrent API fetching
+            const results = await Promise.allSettled([
+                fetch(weatherUrl).then(res => {
+                    if (!res.ok) throw new Error("天氣服務連線失敗");
+                    return res.json();
+                }),
+                fetch(dogUrl).then(res => {
+                    if (!res.ok) throw new Error("Dog CEO API 連線失敗");
+                    return res.json();
+                })
+            ]);
+
+            refreshIcon.classList.remove('animate-spin');
+
+            // Render Weather
+            if (results[0].status === "fulfilled") {
+                renderWeather(results[0].value);
+            } else {
+                renderWeatherError(results[0].reason);
+            }
+
+            // Render Dog Photo
+            if (results[1].status === "fulfilled") {
+                renderDogPhoto(results[1].value);
+            } else {
+                renderDogError();
+            }
+        }
+
+        function setWeatherUIState(isLoading) {
+            if (isLoading) {
+                document.getElementById('cityName').innerText = isGeoLocationActive ? "定位中..." : currentCoords.name;
+                document.getElementById('tempValue').innerText = "--";
+                document.getElementById('weatherCondition').innerText = "載入天氣數據中...";
+                document.getElementById('feelsLike').innerText = "-- °C";
+                document.getElementById('humidityValue').innerText = "-- %";
+                document.getElementById('windSpeed').innerText = "-- km/h";
+            }
+        }
+
+        function renderWeather(data) {
+            const current = data.current;
+            if (!current) {
+                renderWeatherError("天氣資料無效");
+                return;
+            }
+
+            const code = current.weather_code;
+            const weatherConfig = WMO_WEATHER_MAP[code] || { desc: "未知天氣狀況", icon: "cloud", color: "text-slate-300" };
+
+            document.getElementById('cityName').innerText = currentCoords.name;
+            document.getElementById('tempValue').innerText = Math.round(current.temperature_2m);
+            document.getElementById('weatherCondition').innerText = weatherConfig.desc;
+            document.getElementById('feelsLike').innerText = `${Math.round(current.apparent_temperature)} °C`;
+            document.getElementById('humidityValue').innerText = `${current.relative_humidity_2m} %`;
+            document.getElementById('windSpeed').innerText = `${Math.round(current.wind_speed_10m)} km/h`;
+
+            // Dynamic Weather Icon Render
+            const iconBox = document.getElementById('weatherIconContainer');
+            iconBox.innerHTML = `<i data-lucide="${weatherConfig.icon}" class="w-8 h-8 ${weatherConfig.color}"></i>`;
+            lucide.createIcons();
+        }
+
+        function renderWeatherError(err) {
+            document.getElementById('cityName').innerText = "無法取得數據";
+            document.getElementById('weatherCondition').innerText = "天氣 API 連線失敗";
+            showToast("無法獲取天氣預報資訊，請檢查網路連線或稍後再試。");
+            console.error("Weather fetch failed:", err);
+        }
+
+        async function fetchDogPhotoOnly() {
+            triggerDogSkeleton();
+            const btn = document.getElementById('refreshDogBtn');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`https://dog.ceo/api/breeds/image/random`);
+                if (!res.ok) throw new Error("Failed fetching dog image");
+                const data = await res.json();
+                renderDogPhoto(data);
+            } catch (err) {
+                renderDogError();
+                showToast("狗狗照片載入失敗，請點擊重試。");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function triggerDogSkeleton() {
+            const img = document.getElementById('dogImage');
+            const skeleton = document.getElementById('dogSkeleton');
+            const badge = document.getElementById('dogBreedBadge');
+
+            img.classList.add('opacity-0');
+            skeleton.classList.remove('hidden');
+            badge.classList.add('opacity-0');
+        }
+
+        function renderDogPhoto(data) {
+            if (data && data.status === "success") {
+                const img = document.getElementById('dogImage');
+                currentDog.url = data.message;
+                img.src = data.message;
+
+                // Extract breed from URL string (e.g., /breeds/retriever-golden/...)
+                const match = data.message.match(/breeds\/([^/]+)/);
+                if (match && match[1]) {
+                    let breedName = match[1].split('-').reverse().join(' ');
+                    breedName = breedName.replace(/\b\w/g, l => l.toUpperCase());
+                    currentDog.breed = breedName;
+                    document.getElementById('dogBreedText').innerText = breedName;
+                } else {
+                    currentDog.breed = "Cute Pup";
+                    document.getElementById('dogBreedText').innerText = "Cute Pup";
+                }
+
+                updateLikeButtonState();
+            } else {
+                renderDogError();
+            }
+        }
+
+        function onDogImageLoaded() {
+            document.getElementById('dogSkeleton').classList.add('hidden');
+            document.getElementById('dogImage').classList.remove('opacity-0');
+            document.getElementById('dogBreedBadge').classList.remove('opacity-0');
+        }
+
+        function onDogImageError() {
+            document.getElementById('dogSkeleton').classList.add('hidden');
+            document.getElementById('dogBreedText').innerText = "照片載入失敗";
+            document.getElementById('dogBreedBadge').classList.remove('opacity-0');
+        }
+
+        function renderDogError() {
+            onDogImageError();
+        }
+    </script>
+</body>
+</html>
